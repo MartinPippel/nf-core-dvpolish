@@ -33,6 +33,8 @@ ch_multiqc_custom_methods_description = params.multiqc_methods_description ? fil
 */
 
 include { DVPOLISH_CHUNKFA             } from "$projectDir/modules/local/dvpolish/chunkfa"
+include { DVPOLISH_PBMM2_INDEX         } from "$projectDir/modules/local/dvpolish/pbmm2_index"
+include { DVPOLISH_PBMM2_ALIGN         } from "$projectDir/modules/local/dvpolish/pbmm2_align"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,7 +46,11 @@ include { DVPOLISH_CHUNKFA             } from "$projectDir/modules/local/dvpolis
 // MODULE: Installed directly from nf-core/modules
 //
 include { SAMTOOLS_FAIDX              } from "$projectDir/modules/nf-core/samtools/faidx/main"
-
+include { SAMTOOLS_VIEW               } from "$projectDir/modules/nf-core/samtools/view/main"
+include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_FILTER } from "$projectDir/modules/nf-core/samtools/index/main"
+include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_MERGE  } from "$projectDir/modules/nf-core/samtools/index/main"
+include { SAMTOOLS_MERGE              } from "$projectDir/modules/nf-core/samtools/merge/main"
+include { DEEPVARIANT                 } from "$projectDir/modules/nf-core/deepvariant/main"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -55,30 +61,137 @@ include { SAMTOOLS_FAIDX              } from "$projectDir/modules/nf-core/samtoo
 // Info required for completion email and summary
 def multiqc_report = []
 
+def meta_map = [
+    id: "Species_name",
+    single_end: true
+]
+
 workflow DVPOLISH {
 
     //ch_versions = Channel.empty()
 
-    // Provide values for the tuple
-    meta_value = "sample_metadata"
-    fasta_file = file("/Users/marpi652/prog/nf-core-dvpolish/data/asm.fasta")
-    reads_file = file("/Users/marpi652/prog/nf-core-dvpolish/data/reads.fq.gz")
+    Channel.fromPath(params.fasta_file, checkIfExists: true)
+        .map{asm -> [ meta_map, asm ]}
+        .collect()          // to make a value channel, otherwise it will only be used once in the alignmnent step and than its consumed !!!
+        .set{asm_file}
 
-    test_file = file("/Users/marpi652/prog/nf-core-dvpolish/data/asm.fasta.fai")
+    Channel.fromPath(params.reads_file, checkIfExists: true)
+                .map{reads -> [meta_map, reads ]}
+        .set{reads_file}
+
     //
     // MODULE: Run SAMTOOLS_FAIDX
     //
     SAMTOOLS_FAIDX (
-        [meta_value, fasta_file],
-        [['id':null], []]
+        asm_file,
+        [meta_map, []]
     )
 
     //
     // MODULE: Run SPLIT_FA
     //
     DVPOLISH_CHUNKFA (
-        [['id': "gfPorChr"], test_file]
+        SAMTOOLS_FAIDX.out.fai
     )
+
+    //
+    // MODULE: PBMM2_INDEX
+    //
+    DVPOLISH_PBMM2_INDEX (
+        asm_file
+    )
+
+
+    reads_file.view{it: println("reads_files: (plain)" + it) }
+    reads_file.groupTuple().view{it: println("reads_files: (tuple)" + it) }
+
+    //
+    // MODULE: PBMM2_ALIGN
+    //
+    DVPOLISH_PBMM2_ALIGN (
+        reads_file,
+        asm_file
+    )
+
+    //DVPOLISH_PBMM2_ALIGN.out.bam.view {it: println("DVPOLISH_PBMM2_ALIGN (bam): " + it)}
+
+
+
+def path_closure = {meta, files -> files.collect(){[meta, it ]}}
+
+DVPOLISH_PBMM2_ALIGN.out.bam
+    .flatMap(path_closure)
+    .combine(DVPOLISH_CHUNKFA.out.bed.flatMap(path_closure), by:0)
+    .map { map, bam, bed -> [ map + [mergeID: bed.baseName], bam, bed]
+
+    }
+    .set { bam_bed_ch }
+
+//    bam_bed_ch.view()
+
+
+DVPOLISH_PBMM2_ALIGN.out.bai
+    .flatMap(path_closure)
+    .combine(DVPOLISH_CHUNKFA.out.bed.flatMap(path_closure), by:0)
+    .map { meta, bai, bed -> bai }
+    .set { bai_ch }
+
+    //bai_ch.view()
+
+    //
+    // MODULE: Run SAMTOOLS_VIEW
+    //
+    SAMTOOLS_VIEW (bam_bed_ch, [[],[]], bai_ch)
+
+    //
+    // MODULE: Run SAMTOOLS_INDEX
+    //
+    SAMTOOLS_INDEX_FILTER(SAMTOOLS_VIEW.out.bam)
+
+//    SAMTOOLS_VIEW.out.bam.view()
+
+//    SAMTOOLS_VIEW.out.bam.groupTuple(by:1).view()
+
+SAMTOOLS_VIEW.out.bam
+    .groupTuple(by:0)
+    .branch { meta, bam_list ->
+        merge: bam_list.size() > 1
+        link: true
+    }
+    .set { bam_merge_ch }
+
+// bam_merge_ch.merge.view{ println("falk merge: " + it + " size: " + it.size() + ", " + it[0].size() + ", " + it[1].size())}
+// bam_merge_ch.do_nothing.view{ println("falk do nothing: " + it)}
+
+    SAMTOOLS_MERGE(
+        bam_merge_ch.merge,
+        [[],[]],
+        [[],[]]
+    )
+    SAMTOOLS_INDEX_MERGE(SAMTOOLS_MERGE.out.bam)
+
+    //bam_merge_ch.link.view()
+    //SAMTOOLS_INDEX_FILTER.out.bai.view()
+
+    bam_merge_ch.link
+    .map { meta, bam -> [ meta, *bam ]} // the spread operator (*) flattens the bam lsit
+    .join(SAMTOOLS_INDEX_FILTER.out.bai, by:0)
+    .map { it -> it + [[]] }
+    .mix(SAMTOOLS_MERGE.out.bam
+        .join(SAMTOOLS_INDEX_MERGE.out.bai, by:0)
+        .map { it -> it + [[]] }
+    )
+    .set {deepvariant_ch}
+    //.view()
+
+    // run deepVariant
+    DEEPVARIANT(
+        deepvariant_ch,
+        asm_file,
+        SAMTOOLS_FAIDX.out.fai,
+        [[],[]]     // tuple val(meta4), path(gzi)
+    )
+
 
 
     //

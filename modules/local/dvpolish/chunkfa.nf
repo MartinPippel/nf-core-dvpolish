@@ -28,7 +28,7 @@ process DVPOLISH_CHUNKFA {
     tuple val(meta), path(fai)
 
     output:
-    tuple val(meta), path ("*.{bed}")      , emit: bed
+    tuple val(meta), path ("*.bed", arity: '1..*')        , emit: bed
     path "versions.yml"                    , emit: versions
 
     when:
@@ -38,12 +38,11 @@ process DVPOLISH_CHUNKFA {
     def args = task.ext.args ?: ''
     def prefix = task.ext.prefix ?: "${meta.id}"
 
-    def chunk_size = '20M'
     """
     # convert chunk size into base pairs
 
-    chunk_size=$chunk_size
-    chunk_size_inBases=$chunk_size
+    chunk_size=$params.chunk_size
+    chunk_size_inBases=$params.chunk_size
     i=\$((\${#chunk_size}-1))
     if [[ "\${chunk_size: -1}" =~ [gG] ]]
     then
