@@ -5,8 +5,8 @@ process DEEPVARIANT {
 
     
     //container "nf-core/deepvariant:1.5.0"
-    container 'gcr.io/deepvariant-docker/deepvariant:1.6.0'
-
+    //container 'gcr.io/deepvariant-docker/deepvariant:1.6.0'
+    container = "docker.io/google/deepvariant:CL602468145"
 
 
     input:
