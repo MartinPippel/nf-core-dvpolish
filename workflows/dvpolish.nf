@@ -193,9 +193,15 @@ SAMTOOLS_VIEW.out.bam
         [[],[]]     // tuple val(meta4), path(gzi)
     )
 
-    DEEPVARIANT.out.vcf.view{it: println("DV vcf file: " + it)}
+//    DEEPVARIANT.out.vcf.view{it: println("DV vcf file: " + it)}
 
-    DEEPVARIANT.out.vcf_tbi.view{it: println("DV vcf index file: " + it)}
+//    DEEPVARIANT.out.vcf_tbi.view{it: println("DV vcf index file: " + it)}
+
+    DEEPVARIANT.out.vcf
+    .join(DEEPVARIANT.out.vcf_tbi, by:0)
+    .set { bcftools_view_ch }
+
+    bcftools_view_ch.view()
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
