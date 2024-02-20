@@ -51,6 +51,7 @@ include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_FILTER } from "$projectDir/modules/nf
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_MERGE  } from "$projectDir/modules/nf-core/samtools/index/main"
 include { SAMTOOLS_MERGE              } from "$projectDir/modules/nf-core/samtools/merge/main"
 include { DEEPVARIANT                 } from "$projectDir/modules/nf-core/deepvariant/main"
+include { BCFTOOLS_VIEW               } from "$projectDir/modules/nf-core/bcftools/view/main"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -184,13 +185,6 @@ SAMTOOLS_VIEW.out.bam
     .unique())
     .set {deepvariant_ch}
 
-
-    deepvariant_ch.view()
-
-//    bam_bed_ch
-//    .map { meta, bam, bed -> [meta, bed]}
-//    .unique().view()
-//
     // run deepVariant
     DEEPVARIANT(
         deepvariant_ch,
@@ -199,7 +193,9 @@ SAMTOOLS_VIEW.out.bam
         [[],[]]     // tuple val(meta4), path(gzi)
     )
 
+    DEEPVARIANT.out.vcf.view{it: println("DV vcf file: " + it)}
 
+    DEEPVARIANT.out.vcf_tbi.view{it: println("DV vcf index file: " + it)}
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
