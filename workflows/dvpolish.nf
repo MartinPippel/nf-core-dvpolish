@@ -52,6 +52,7 @@ include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_MERGE  } from "$projectDir/modules/nf
 include { SAMTOOLS_MERGE              } from "$projectDir/modules/nf-core/samtools/merge/main"
 include { DEEPVARIANT                 } from "$projectDir/modules/nf-core/deepvariant/main"
 include { BCFTOOLS_VIEW               } from "$projectDir/modules/nf-core/bcftools/view/main"
+include { TABIX_TABIX                 } from "$projectDir/modules/nf-core/tabix/tabix/main"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -209,6 +210,11 @@ SAMTOOLS_VIEW.out.bam
         [], // path(regions)
         [], // path(targets)
         [] // path(samples)
+    )
+
+    // run tabic on filtered vcf.gz files
+    TABIX_TABIX(
+        BCFTOOLS_VIEW.out.vcf
     )
 
     //

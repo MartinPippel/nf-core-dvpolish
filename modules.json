@@ -54,6 +54,11 @@
                         "branch": "master",
                         "git_sha": "ce0b1aed7d504883061e748f492a31bf44c5777c",
                         "installed_by": ["modules"]
+                    },
+                    "tabix/tabix": {
+                        "branch": "master",
+                        "git_sha": "3f5420aa22e00bd030a2556dfdffc9e164ec0ec5",
+                        "installed_by": ["modules"]
                     }
                 }
             }
