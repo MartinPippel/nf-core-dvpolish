@@ -203,6 +203,14 @@ SAMTOOLS_VIEW.out.bam
 
     bcftools_view_ch.view()
 
+    // run bcftools view with predefined filter options
+    BCFTOOLS_VIEW (
+        bcftools_view_ch,
+        [], // path(regions)
+        [], // path(targets)
+        [] // path(samples)
+    )
+
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
     //
