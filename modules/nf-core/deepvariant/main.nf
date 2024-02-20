@@ -32,7 +32,7 @@ process DEEPVARIANT {
     }
     def args = task.ext.args ?: ''
     prefix = task.ext.prefix ?: "${meta.id}"
-    def regions = intervals ? "--regions=${intervals}" : ""
+    def regions = intervals ? "--regions=./${intervals}" : ""
 
     """
     /opt/deepvariant/bin/run_deepvariant \\
@@ -42,7 +42,7 @@ process DEEPVARIANT {
         --output_gvcf=${prefix}.g.vcf.gz \\
         ${args} \\
         ${regions} \\
-        --intermediate_results_dir=. \\
+        --intermediate_results_dir=intermediate_results \\
         --num_shards=${task.cpus}
 
     cat <<-END_VERSIONS > versions.yml
