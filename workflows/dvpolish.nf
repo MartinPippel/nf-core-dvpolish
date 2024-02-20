@@ -45,16 +45,17 @@ include { DVPOLISH_PBMM2_ALIGN         } from "$projectDir/modules/local/dvpolis
 //
 // MODULE: Installed directly from nf-core/modules
 //
-include { SAMTOOLS_FAIDX              } from "$projectDir/modules/nf-core/samtools/faidx/main"
-include { SAMTOOLS_VIEW               } from "$projectDir/modules/nf-core/samtools/view/main"
+include { SAMTOOLS_FAIDX                          } from "$projectDir/modules/nf-core/samtools/faidx/main"
+include { SAMTOOLS_VIEW                           } from "$projectDir/modules/nf-core/samtools/view/main"
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_FILTER } from "$projectDir/modules/nf-core/samtools/index/main"
 include { SAMTOOLS_INDEX as SAMTOOLS_INDEX_MERGE  } from "$projectDir/modules/nf-core/samtools/index/main"
-include { SAMTOOLS_MERGE              } from "$projectDir/modules/nf-core/samtools/merge/main"
-include { DEEPVARIANT                 } from "$projectDir/modules/nf-core/deepvariant/main"
-include { BCFTOOLS_VIEW               } from "$projectDir/modules/nf-core/bcftools/view/main"
-include { TABIX_TABIX                 } from "$projectDir/modules/nf-core/tabix/tabix/main"
-include { BCFTOOLS_MERGE              } from "$projectDir/modules/nf-core/bcftools/merge/main"
-include { BCFTOOLS_CONSENSUS          } from "$projectDir/modules/nf-core/bcftools/consensus/main"
+include { SAMTOOLS_MERGE                          } from "$projectDir/modules/nf-core/samtools/merge/main"
+include { DEEPVARIANT                             } from "$projectDir/modules/nf-core/deepvariant/main"
+include { BCFTOOLS_VIEW                           } from "$projectDir/modules/nf-core/bcftools/view/main"
+include { TABIX_TABIX as TABIX_TABIX              } from "$projectDir/modules/nf-core/tabix/tabix/main"
+include { TABIX_TABIX as TABIX_TABIX_MERGED       } from "$projectDir/modules/nf-core/tabix/tabix/main"
+include { BCFTOOLS_MERGE                          } from "$projectDir/modules/nf-core/bcftools/merge/main"
+include { BCFTOOLS_CONSENSUS                      } from "$projectDir/modules/nf-core/bcftools/consensus/main"
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -247,6 +248,11 @@ SAMTOOLS_VIEW.out.bam
         SAMTOOLS_FAIDX.out.fai,
         [] // path(bed)
     )
+
+    TABIX_TABIX_MERGED(
+        BCFTOOLS_MERGE.out.merged_variants
+    )
+
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
