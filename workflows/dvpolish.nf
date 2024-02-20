@@ -53,7 +53,8 @@ include { SAMTOOLS_MERGE              } from "$projectDir/modules/nf-core/samtoo
 include { DEEPVARIANT                 } from "$projectDir/modules/nf-core/deepvariant/main"
 include { BCFTOOLS_VIEW               } from "$projectDir/modules/nf-core/bcftools/view/main"
 include { TABIX_TABIX                 } from "$projectDir/modules/nf-core/tabix/tabix/main"
-
+include { BCFTOOLS_MERGE              } from "$projectDir/modules/nf-core/bcftools/merge/main"
+include { BCFTOOLS_CONSENSUS          } from "$projectDir/modules/nf-core/bcftools/consensus/main"
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     RUN MAIN WORKFLOW
@@ -212,9 +213,39 @@ SAMTOOLS_VIEW.out.bam
         [] // path(samples)
     )
 
-    // run tabic on filtered vcf.gz files
+    // run tabiX on filtered vcf.gz files
     TABIX_TABIX(
         BCFTOOLS_VIEW.out.vcf
+    )
+
+    // in case of multiple vcf files, merge them prior the consenus step
+        // in case of multiple vcf files, merge them prior the consenus step
+    BCFTOOLS_VIEW.out.vcf
+    .map { meta, vcf -> [ meta.subMap('id', 'single_end'), vcf ] }
+    .groupTuple(by:0)
+    .set { filt_vcf_list_ch }
+
+    TABIX_TABIX.out.tbi
+    .map { meta, vcf -> [ meta.subMap('id', 'single_end'), vcf ] }
+    .groupTuple(by:0)
+    .set { filt_tbi_list_ch }
+
+    filt_vcf_list_ch
+    .join(filt_tbi_list_ch, by:0)
+    .branch { meta, vcf_list, vcf_index_list ->
+        merge: vcf_list.size() > 1
+        other: true
+    }
+    .set { vcf_merge_ch }
+
+    vcf_merge_ch.merge.view { it: println("vcf_merge_ch.merge: " + it)}
+    vcf_merge_ch.other.view { it: println("vcf_merge_ch.other: " + it)}
+
+    BCFTOOLS_MERGE(
+        vcf_merge_ch.merge,
+        asm_file,
+        SAMTOOLS_FAIDX.out.fai,
+        [] // path(bed)
     )
 
     //
