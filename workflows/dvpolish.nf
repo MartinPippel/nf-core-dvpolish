@@ -253,6 +253,30 @@ SAMTOOLS_VIEW.out.bam
         BCFTOOLS_MERGE.out.merged_variants
     )
 
+    vcf_merge_ch.other
+    .map { meta, vcf, idx  -> [ meta, *vcf, *idx ] } // the spread operator (*) flattens the bam lsit
+    .mix(BCFTOOLS_MERGE.out.merged_variants
+        .join(TABIX_TABIX_MERGED.out.tbi)
+    )
+    .join(asm_file)
+    .set { bcftools_consensus_ch }
+
+    BCFTOOLS_CONSENSUS(
+        bcftools_consensus_ch
+    )
+
+    bam_merge_ch.link
+    .map { meta, bam -> [ meta, *bam ]} // the spread operator (*) flattens the bam lsit
+    .join(SAMTOOLS_INDEX_FILTER.out.bai, by:0)
+    .mix(SAMTOOLS_MERGE.out.bam
+        .join(SAMTOOLS_INDEX_MERGE.out.bai, by:0)
+    )
+    .join(bam_bed_ch
+    .map { meta, bam, bed -> [meta, bed]}
+    .unique())
+    .set {deepvariant_ch}
+
+
 
     //
     // SUBWORKFLOW: Read in samplesheet, validate and stage input files
