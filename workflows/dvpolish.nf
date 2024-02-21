@@ -265,17 +265,6 @@ SAMTOOLS_VIEW.out.bam
         bcftools_consensus_ch
     )
 
-    bam_merge_ch.link
-    .map { meta, bam -> [ meta, *bam ]} // the spread operator (*) flattens the bam lsit
-    .join(SAMTOOLS_INDEX_FILTER.out.bai, by:0)
-    .mix(SAMTOOLS_MERGE.out.bam
-        .join(SAMTOOLS_INDEX_MERGE.out.bai, by:0)
-    )
-    .join(bam_bed_ch
-    .map { meta, bam, bed -> [meta, bed]}
-    .unique())
-    .set {deepvariant_ch}
-
 
 
     //
